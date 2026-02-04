@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Offline Dashboard</title>
+  <link rel="stylesheet" href="./styles/base.css">
+  <link rel="stylesheet" href="./styles/component.css">
+  <link rel="stylesheet" href="./styles/layout.css">
+  <link rel="stylesheet" href="./styles/themes.css">
+  <link rel="icon" href="/favicon.ico" />
+
+</head>
+<body>
+
+    <button id="theme-toggle-btn" title="Toggle theme">🌓</button>
+  <div id="todo-container" style="display: none;">
+
+    <header id="connectivity-hub">
+      <div class="status-leds">
+        <span id="ws-led">🟡 Real-time (Socket)</span>
+        <span id="sse-led">🟡 Global Stats (SSE)</span>
+        <span id="long-poll-led">🟡 Alerts (Long Poll)</span>
+        <span id="short-poll-led">🟡 Health (Short Poll)</span>
+      </div>
+      <div id="worker-progress" style="display: none;">
+        <progress value="0" max="100"></progress>
+      </div>
+      <button id="logout-btn">LogOut</button>
+      <button id="stress-btn">Stress Test</button>
+    </header>
+
+    <section id="task-input">
+      <input type="text" id="task-text" class="task-input" placeholder="Add a task...">
+      <input type="file" id="task-image" accept="image/*" style="display: none;"><!-- For image upload -->
+      <button id="clip-btn">📎</button> 
+      
+      <button id="add-task-btn">Add</button>
+
+      <select id="sort-tasks">
+      <option value="desc">Newest first</option>
+      <option value="asc">Oldest first</option>
+      </select>
+
+      <input
+        type="text"
+        class="task-input"
+        id="search-tasks"
+        placeholder="Search tasks..."
+        autocomplete="off"
+      />
+
+
+    </section>
+
+    <ul id="task-list"></ul> <!-- Delegated events here -->
+
+    <h3 id="complete-task-heading">Completed Tasks</h3>
+    <ul id="completed-task-list"></ul>
+    
+    <button id="archive-btn">Archive</button>
+    <button id="restore-btn">Restore Archived</button>
+
+    <div id="local-count"></div>
+    <div id="global-count"></div>
+
+
+
+  
+  </div>
+
+  <!-- Task Info Modal -->
+<div id="task-info-modal" class="modal hidden">
+  <div class="modal-content">
+    <button id="close-info-modal">✖</button>
+
+    <h3>Task Info</h3>
+
+    <div id="info-image"></div>
+    <p><strong>Text:</strong> <span id="info-text"></span></p>
+    <p><strong>User:</strong> <span id="info-user"></span></p>
+    <p><strong>Created:</strong> <span id="info-created"></span></p>
+  </div>
+</div>
+
+<!-- Task Edit Modal abh  -->
+<div id="task-edit-modal" class="modal hidden">
+  <div class="modal-content">
+    <button id="close-edit-modal">✖</button>
+
+    <h3>Edit Task</h3>
+
+    <label>
+      Text:
+      <input type="text" id="edit-task-text" />
+    </label>
+
+    <div id="edit-image-preview"></div>
+
+    <input
+      type="file"
+      id="edit-task-image"
+      accept="image/*"
+    />
+
+    <button id="save-edit-task">Save Changes</button>
+  </div>
+</div>
+
+
+  
+  <script type="module" src="scripts/main.js"></script>
+</body>
+</html>
+
+

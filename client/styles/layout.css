@@ -1,0 +1,157 @@
+/* layout.css - Structure and positioning */
+/* Main Container */
+#todo-container {
+  max-width: 900px;
+  margin: 0 auto;
+  padding-top: 1rem;
+}
+
+/* Header / Connectivity Hub */
+#connectivity-hub {
+  background: var(--header-bg);
+  padding: 1.5rem;
+  border-radius: 1rem;
+  margin-bottom: 2rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: center;
+  border: 1px solid var(--header-border);
+  box-shadow: 0 4px 16px var(--shadow-color);
+}
+
+.status-leds {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  flex: 1;
+  min-width: 280px;
+}
+
+.status-leds span {
+  padding: 0.5rem 1rem;
+  background: var(--led-bg);
+  border-radius: 2rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-color);
+  border: 1px solid var(--border-color);
+  transition: all 0.2s ease;
+}
+
+.status-leds span:hover {
+  transform: scale(1.05);
+  box-shadow: 0 2px 8px var(--shadow-color);
+}
+
+#worker-progress {
+  flex: 1;
+  min-width: 200px;
+}
+
+#worker-progress progress {
+  width: 100%;
+  height: 0.75rem;
+  background: var(--progress-bg);
+  border: 1px solid var(--border-color);
+}
+
+#worker-progress progress::-webkit-progress-bar {
+  background: var(--progress-bg);
+  border-radius: 1rem;
+}
+
+#worker-progress progress::-webkit-progress-value {
+  background: linear-gradient(90deg, var(--progress-start), var(--progress-end));
+  border-radius: 1rem;
+  transition: width 0.3s ease;
+}
+
+#worker-progress progress::-moz-progress-bar {
+  background: linear-gradient(90deg, var(--progress-start), var(--progress-end));
+  border-radius: 1rem;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  body {
+    padding: 1rem;
+  }
+
+  #todo-container {
+    padding-top: 0.5rem;
+  }
+
+  #connectivity-hub {
+    padding: 1rem;
+  }
+
+  .status-leds {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  #task-input {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .task-input,
+  #search-tasks,
+  #sort-tasks {
+    width: 100%;
+    min-width: 100%;
+  }
+
+  #task-list li,
+  #completed-task-list li {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  #task-list li button,
+  #completed-task-list li button {
+    width: 100%;
+  }
+
+  #theme-toggle-btn {
+    top: 1rem;
+    right: 1rem;
+    width: 3rem;
+    height: 3rem;
+    font-size: 1.25rem;
+  }
+
+  .modal-content {
+    width: 95%;
+    padding: 1.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  body {
+    padding: 0.75rem;
+  }
+
+  h3 {
+    font-size: 1.25rem;
+  }
+
+  #connectivity-hub {
+    padding: 0.875rem;
+  }
+
+  .status-leds span {
+    font-size: 0.8rem;
+    padding: 0.4rem 0.875rem;
+  }
+
+  .modal-content {
+    padding: 1.25rem;
+  }
+
+  .modal-content h3 {
+    font-size: 1.5rem;
+  }
+}

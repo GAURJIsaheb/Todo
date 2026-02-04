@@ -1,0 +1,137 @@
+/* theme.css - Light and Dark themes */
+
+/* Default Dark Theme */
+:root {
+  /* Background Colors */
+  --bg-color: #0f1419;
+  --card-bg: #1a1f29;
+  --header-bg: #16191f;
+  --input-bg: #1a1f29;
+  --modal-bg: #1a1f29;
+  --info-bg: #1a1f29;
+  --led-bg: #252b37;
+  --progress-bg: #252b37;
+  
+  /* Text Colors */
+  --text-color: #e6edf3;
+  --heading-color: #ffffff;
+  --placeholder-color: #8b949e;
+  
+  /* Button Colors */
+  --btn-bg: #238636;
+  --btn-text: #ffffff;
+  --secondary-btn-bg: #21262d;
+  --secondary-btn-text: #e6edf3;
+  --accent-bg: #1f6feb;
+  --accent-text: #ffffff;
+  --task-btn-bg: #21262d;
+  --task-btn-text: #e6edf3;
+  --task-btn-hover: #30363d;
+  
+  /* Border Colors */
+  --border-color: #30363d;
+  --card-border: #30363d;
+  --card-border-hover: #484f58;
+  --header-border: #30363d;
+  --modal-border: #30363d;
+  --theme-toggle-border: #30363d;
+  
+  /* Shadow Colors */
+  --shadow-color: rgba(0, 0, 0, 0.3);
+  --card-shadow: rgba(0, 0, 0, 0.2);
+  --card-shadow-hover: rgba(0, 0, 0, 0.4);
+  --modal-shadow: rgba(0, 0, 0, 0.5);
+  
+  /* Special Colors */
+  --focus-ring: rgba(31, 111, 235, 0.3);
+  --modal-overlay: rgba(0, 0, 0, 0.75);
+  --secondary-accent: #8957e5;
+  --progress-start: #1f6feb;
+  --progress-end: #58a6ff;
+  
+  /* Theme Toggle */
+  --theme-toggle-bg: #21262d;
+  --theme-toggle-text: #f0d66f;
+  
+  /* Close Button */
+  --close-btn-bg: #f85149;
+  --close-btn-text: #ffffff;
+  --close-btn-hover: #da3633;
+}
+
+/* Light Theme */
+body.light-theme {
+  /* Background Colors */
+  --bg-color: #ffffff;
+  --card-bg: #ffffff;
+  --header-bg: #f6f8fa;
+  --input-bg: #ffffff;
+  --modal-bg: #ffffff;
+  --info-bg: #f6f8fa;
+  --led-bg: #ffffff;
+  --progress-bg: #e1e4e8;
+  
+  /* Text Colors */
+  --text-color: #24292f;
+  --heading-color: #1f2328;
+  --placeholder-color: #57606a;
+  
+  /* Button Colors */
+  --btn-bg: #1a7f37;
+  --btn-text: #ffffff;
+  --secondary-btn-bg: #f6f8fa;
+  --secondary-btn-text: #24292f;
+  --accent-bg: #0969da;
+  --accent-text: #ffffff;
+  --task-btn-bg: #f6f8fa;
+  --task-btn-text: #24292f;
+  --task-btn-hover: #e1e4e8;
+  
+  /* Border Colors */
+  --border-color: #d0d7de;
+  --card-border: #d0d7de;
+  --card-border-hover: #0969da;
+  --header-border: #d0d7de;
+  --modal-border: #d0d7de;
+  --theme-toggle-border: #d0d7de;
+  
+  /* Shadow Colors */
+  --shadow-color: rgba(31, 35, 40, 0.08);
+  --card-shadow: rgba(31, 35, 40, 0.04);
+  --card-shadow-hover: rgba(31, 35, 40, 0.12);
+  --modal-shadow: rgba(31, 35, 40, 0.25);
+  
+  /* Special Colors */
+  --focus-ring: rgba(9, 105, 218, 0.3);
+  --modal-overlay: rgba(31, 35, 40, 0.5);
+  --secondary-accent: #8250df;
+  --progress-start: #0969da;
+  --progress-end: #54aeff;
+  
+  /* Theme Toggle */
+  --theme-toggle-bg: #f6f8fa;
+  --theme-toggle-text: #1f2328;
+  
+  /* Close Button */
+  --close-btn-bg: #cf222e;
+  --close-btn-text: #ffffff;
+  --close-btn-hover: #a40e26;
+}
+
+/* Smooth transitions for theme switching */
+body,
+#todo-container,
+.modal-content,
+#connectivity-hub,
+.task-input,
+#task-list li,
+#completed-task-list li,
+#local-count,
+#global-count,
+.status-leds span,
+button {
+  transition: background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
