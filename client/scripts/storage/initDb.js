@@ -3,9 +3,10 @@ import { openDB } from 'https://unpkg.com/idb?module';
 import { safeAsync } from '../TryCatch/safeAsync.js';
 
 const DB_NAME = 'MyTodoApp';
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 const STORE_TASKS = 'tasks';
 const STORE_USER = 'user';
+const STORE_SYNC = 'syncQueue';
 
 export const initDB = safeAsync(async () => {//Only 1 time DB is opened in the whole app
   return openDB(DB_NAME, DB_VERSION, {
@@ -48,6 +49,14 @@ export const initDB = safeAsync(async () => {//Only 1 time DB is opened in the w
           });
         }
       }
+      ////  NEW SYNC QUEUE STORE
+      if (oldVersion < 4) {
+        if (!db.objectStoreNames.contains(STORE_SYNC)) {
+          const store = db.createObjectStore(STORE_SYNC, { keyPath: 'id' });
+          store.createIndex('byRetry', 'retry');
+        }
+      }
+
     }
   });
 });
@@ -56,6 +65,7 @@ export const initDB = safeAsync(async () => {//Only 1 time DB is opened in the w
 
 
 export const addTask = safeAsync(async (task) => {
+  if(!task?.id) return;
   const db = await initDB();//it is just a js level handler,,not Disk level
   const existing = await db.get(STORE_TASKS, task.id);
 
@@ -76,6 +86,7 @@ export const addTask = safeAsync(async (task) => {
 
 
 export const getAllTasks = safeAsync(async (userEmail) => {
+  if(!userEmail) return [];
   const db = await initDB();
   const allTasks = await db.getAll(STORE_TASKS);
 
@@ -92,6 +103,7 @@ export const saveUser = safeAsync(async (userData) => {
 });
 
 export const getUser = safeAsync(async (email) => {
+  if (!email) return null; //Never call IDB with undefined key.
   const db = await initDB();
   return db.get(STORE_USER, email);
 });
@@ -99,12 +111,14 @@ export const getUser = safeAsync(async (email) => {
 
 //o(1)
 export async function getTaskById(id) {
+  if (!id) return null;  
   const db = await initDB();
   return db.get('tasks', id);
 }
 
 
 export const deleteTaskFromIDB = safeAsync(async (id) => {
+  if (!id) return;  
   const db = await initDB();
   const tx = db.transaction(STORE_TASKS, 'readwrite');
   tx.store.delete(id);
@@ -115,3 +129,73 @@ export const deleteTaskFromIDB = safeAsync(async (id) => {
 
 
 
+//queue helpet functions
+export async function addToQueue(item){
+ const db = await initDB();
+ return db.put('syncQueue', item);
+}
+
+export async function getQueue(){
+ const db = await initDB();
+ return db.getAll('syncQueue');
+}
+
+export async function removeFromQueue(id){
+ const db = await initDB();
+ return db.delete('syncQueue', id);
+}
+
+export async function updateQueue(item){
+ const db = await initDB();
+ return db.put('syncQueue', item);
+}
+
+
+
+
+//to reduce server call--->if checkbox multiple times toggle ho on offline,,so sbh call server pr na jaayein
+/*
+agar user:
+
+edit text
+then complete toggle
+then archive
+
+
+payload change hota.
+
+Old job replace ho raha but payload merge nahi.
+
+Better:
+always keep latest payload only.
+ */
+export async function upsertQueue(job){
+ const db = await initDB();
+ const all = await db.getAll("syncQueue");
+
+ const existing = all.find(
+  j => j.taskId === job.taskId && j.action==="update"
+ );
+
+ if(existing){
+   job.id = existing.id;
+   job.retry = existing.retry || 0;
+ }
+
+ job.nextRetry = Date.now();
+ return db.put("syncQueue", job);
+}
+
+
+
+//Delete aaye to:---->old updates remove.
+export async function removeTaskUpdatesFromQueue(taskId){
+ const db = await initDB();
+ const all = await db.getAll("syncQueue");
+
+ for(const j of all){
+   if(j.taskId===taskId && j.action==="update"){
+     await db.delete("syncQueue", j.id);
+   }
+ }
+}

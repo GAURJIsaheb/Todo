@@ -22,38 +22,44 @@ import {
 
 import { initConnectivity } from './network/connectivity.js';
 import { updateGlobalCount } from './network/counts.js';
-
-
 import { getMe ,logout } from './auth.js';
+
+//sync queue
+import {runSyncQueue} from './syncEngine/syncEngine.js'
 
 
 const LOGIN_PAGE = './pages/login.html';
 
+const token = localStorage.getItem("token");
+
+if (!token) {
+  window.location.href = LOGIN_PAGE;
+}
+
+
 const bootstrap = safeAsync(async () => {
   console.log('Bootstrap start');
+  
+  const token = localStorage.getItem("token");
+  if (!token) {
+    window.location.href = LOGIN_PAGE;
+    return;
+  }
 
   let user = null;
 
   try {
-    /*
-    await getMe()  // returns
-    {
-      user: {
-        email: 'first123@gmail.com',
-        name: 'edge1'
-      }
-    }
-   */
-    const res = await getMe();
+
+    const res = await getMe();//verify token with backend
     user = res.user;
   } catch {
-    const cached = localStorage.getItem('user');
-    if (cached) user = JSON.parse(cached);
+    alert("Token invalid");
   }
 
-  // normalize
-  if (user && !user.email && user.userEmail) {
-    user.email = user.userEmail;
+  if (!user) {
+    const email = localStorage.getItem("userEmail");
+    const name = localStorage.getItem("userName");
+    if (email) user = { email, name };
   }
 
   // hard guard
@@ -64,6 +70,7 @@ const bootstrap = safeAsync(async () => {
     return;
   }
 
+  //save normalise user
   localStorage.setItem('user', JSON.stringify(user));
   appState.currentUser = user;
 
@@ -85,23 +92,27 @@ const loadDashboard = safeAsync(async () => {
   console.log('📦 dashboard loading');
 
   logoutBtn.addEventListener('click', async () => {
-    const ok = confirm('Logout and clear session?');
-    if (!ok) return;
+  const ok = confirm('Logout and clear session?');
+  if (!ok) return;
 
-    try {
-      await logout(); // server + cookie cleanup
-    } finally {
-      //  realtime cleanup
-      appState.socket?.disconnect();
+  try {
+    await logout();
+  } finally {
 
-      //  client cleanup
-      localStorage.removeItem('user');
-      appState.currentUser = null;
+    appState.socket?.disconnect();
 
-      //  full reset 
-      window.location.href = LOGIN_PAGE;
-    }
-  });
+    // FULL cleanup
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    localStorage.removeItem('userEmail');
+    localStorage.removeItem('userName');
+
+    appState.currentUser = null;
+
+    window.location.href = LOGIN_PAGE;
+  }
+});
+
 
 
   todoContainer.style.display = 'block';
@@ -130,6 +141,16 @@ const loadDashboard = safeAsync(async () => {
   renderTasks(tasks);
 
   await updateGlobalCount();
+
+
+  //sync engine
+  setInterval(runSyncQueue, 20000);
+
+  // run once immediately
+  runSyncQueue();
+
+  // when internet returns
+  window.addEventListener("online", runSyncQueue);
 });
 
 bootstrap();

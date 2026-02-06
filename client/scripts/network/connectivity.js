@@ -20,10 +20,12 @@ import { initShortPoll } from './shortPoll.js';
 //global try-catch for async + sync eventlistners functions
 import { safeAsync } from '../TryCatch/safeAsync.js';
 
+const API_BASE = "http://localhost:3000";
+
 
 
 let reconnectTimer = null;
-const API_BASE = 'http://localhost:3000';
+
 let heartbeatTimeout = null
 
 
@@ -40,6 +42,12 @@ function wsRed() {
   wsLed.dataset.state = CONNECTION_STATES.RED;
   wsLed.textContent = '🔴 Offline';
 }
+
+function getToken() {
+  return localStorage.getItem('token');
+}
+
+
 export function setChannelState(el, state, label) {
   el.dataset.state = state;
   el.textContent = label;
@@ -83,12 +91,16 @@ export function initConnectivity({ currentUser, onRender }) {
 
 
 
-  const socket = io(API_BASE, {
-    reconnection: true,
-    reconnectionAttempts: Infinity,       
-    reconnectionDelay: 2000,  //wait for 2 sec when disconnected     
-    reconnectionDelayMax: 10000,//upper limit of max wait
-    });
+     const socket = io(API_BASE, {
+        auth: {
+          token: getToken()
+        },
+        reconnection: true,
+        reconnectionAttempts: Infinity,
+        reconnectionDelay: 2000,
+        reconnectionDelayMax: 10000,
+      });
+
 
 
   // expose socket to appState 
@@ -116,7 +128,10 @@ export function initConnectivity({ currentUser, onRender }) {
 
     // 2.) SERVER Truth/Data upholding
     const res = await fetch(
-      `${API_BASE}/tasks?userEmail=${appState.currentUser.email}`
+      `${API_BASE}/tasks?userEmail=${appState.currentUser.email}`,{
+      headers: {
+       Authorization: 'Bearer ' + getToken()
+    }}
     );
     const serverTasks = await res.json();
 
@@ -151,7 +166,11 @@ export function initConnectivity({ currentUser, onRender }) {
 //handle race condtion by sending POST req-->as post guranty ki task hai index db mai
       await fetch(`${API_BASE}/tasks`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer ' + getToken()
+        },
+
         body: JSON.stringify({
           id: task.id,//not random new id
           userEmail: appState.currentUser.email,
@@ -166,7 +185,11 @@ export function initConnectivity({ currentUser, onRender }) {
       //  update state on server 
       await fetch(`${API_BASE}/tasks/${task.id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer ' + getToken()
+        },
+
         body: JSON.stringify({
           userEmail: appState.currentUser.email,
           completed: task.completed ?? false

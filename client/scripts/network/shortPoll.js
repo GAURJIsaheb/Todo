@@ -2,6 +2,11 @@ import { safeAsync } from '../TryCatch/safeAsync.js';
 import { setChannelState } from './connectivity.js';
 import { CONNECTION_STATES } from './connectionState.js';
 
+function authHeader(){
+  const token = localStorage.getItem("token");
+  return token ? { Authorization: "Bearer " + token } : {};
+}
+
 export function initShortPoll({ API_BASE, shortPollLed }) {
   let lastSuccessAt = Date.now();
   let stopped = false;
@@ -18,8 +23,18 @@ export function initShortPoll({ API_BASE, shortPollLed }) {
     if (stopped) return;
 
     try {
-      const res = await fetch(`${API_BASE}/short-poll`);
-      if (!res.ok) throw new Error();
+      const res = await fetch(`${API_BASE}/short-poll`,{
+        headers: authHeader()
+      });
+      if (!res.ok){
+        if(res.status === 401){
+          console.warn("JWT expired → redirect login");
+          localStorage.removeItem("token");
+          setTimeout(()=>location.href="/pages/login.html",1000);
+          return;
+        }
+        throw new Error();
+      }
 
       await res.json();
       lastSuccessAt = Date.now();

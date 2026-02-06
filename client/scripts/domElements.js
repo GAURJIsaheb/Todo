@@ -47,7 +47,5 @@ export const logoutBtn = document.getElementById('logout-btn');
 
 
 
-//config
-export const API_BASE = 'http://localhost:3000';
 
 
