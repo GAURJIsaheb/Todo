@@ -9,7 +9,9 @@ import { safeAsync } from '../TryCatch/safeAsync.js';
 
 import {
   addTask,
-  deleteTaskFromIDB,
+  addToQueue,
+  removeTaskUpdatesFromQueue,
+  upsertQueue,
   getTaskById
 } from '../storage/initDb.js';
 
@@ -20,15 +22,24 @@ import {moveTaskBetweenLists,
   updateTaskInDOM,
   removeTaskFromDOM } from '../RenderUi/render.js';
 
-import { API_BASE } from '../domElements.js';
 
+const API_BASE = "http://localhost:3000";
+
+
+function authHeaders(){
+  const token = localStorage.getItem("token");
+  return {
+    "Content-Type":"application/json",
+    "Authorization":"Bearer "+token
+  };
+}
 
 
 export function initTaskEvents() {
 
   // ✔ checkbox → DB update → server sync → UI redraw
   document.addEventListener('change',safeAsync(async (e) => {
-    //console.log("checkbox "+e.target);---- > [object HTMLInputElement]
+
     if (e.target.type !== 'checkbox') return;
 
     const li = e.target.closest('li');//checkbox ke jariye  task pkda
@@ -41,20 +52,22 @@ export function initTaskEvents() {
     const isCompletedView = li.parentElement === completedTaskList;
     if (!isCompletedView) {
       task.completed = e.target.checked;
-      task.syncStatus = appState.socket?.connected ? 'synced' : 'pending';
 
+      //on dit mark it pending
+      task.syncStatus = 'pending';
+      task.updatedAt = Date.now();
       await addTask(task);
 
-      if (appState.socket?.connected) {
-        await fetch(`${API_BASE}/tasks/${taskId}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            userEmail: appState.currentUser.email,
-            completed: task.completed
-          })
-        });
-      }
+      await upsertQueue({//only queue update no server call
+          id:crypto.randomUUID(),
+          action:"update",
+          taskId:task.id,
+          userEmail:appState.currentUser.email,
+          payload:{ completed:task.completed },
+          retry:0,
+          nextRetry:Date.now()
+          });
+
 
       moveTaskBetweenLists(task);
       await updateLocalCount();
@@ -106,8 +119,7 @@ export function initTaskEvents() {
 
       const res = await fetch(`${API_BASE}/share`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+        headers: authHeaders(),
         body: JSON.stringify({
           toEmail: toEmail.trim(),
           taskId: task.id
@@ -136,25 +148,30 @@ export function initTaskEvents() {
 
     //Delete button
     if (btn.classList.contains('delete')) {
-        //  if task was never synced, dont hit the server
-            if (task.syncStatus !== 'synced') {
-              await deleteTaskFromIDB(taskId);
-              removeTaskFromDOM(taskId);
-              return;
-            }
 
+      // mark deleted locally always
+      task.deleted = true;
+      task.syncStatus = 'pending';
+      task.updatedAt = Date.now();
+      await addTask(task);
 
+      removeTaskFromDOM(taskId);
 
-            if (appState.socket?.connected) {
-              await fetch(
-                `${API_BASE}/tasks/${taskId}?userEmail=${appState.currentUser.email}`,
-                { method: 'DELETE' ,credentials: 'include' }
-              );
-            }
+      //if delete --> thn remove old updates
+      await removeTaskUpdatesFromQueue(task.id);
 
-            await deleteTaskFromIDB(taskId);
-            removeTaskFromDOM(taskId);
-          }
+      await addToQueue({//2nd time only queue push no server call
+          id: crypto.randomUUID(),
+          action:"delete",
+          taskId:task.id,
+          userEmail:appState.currentUser.email,
+          payload:null,
+          retry:0,
+          nextRetry:Date.now()
+        });
+
+    }
+
 
   })
 );
@@ -176,26 +193,20 @@ export function initTaskEvents() {
       // local restore
       task.completed = false;
       task.selectedForArchive = false;
-      task.syncStatus = appState.socket?.connected ? 'synced' : 'pending';
-
+      task.syncStatus = 'pending';
+      task.updatedAt = Date.now();
       await addTask(task);
 
-      //  SERVER UPDATE 
-      if (appState.socket?.connected) {
-        await fetch(`${API_BASE}/tasks/${task.id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({
-            userEmail: appState.currentUser.email,
-            completed: false,
-            selectedForArchive: false
-          })
+      await upsertQueue({//again 3rd time
+        id:crypto.randomUUID(),
+        action:"update",
+        taskId:task.id,
+        userEmail:appState.currentUser.email,
+        payload:{ completed:false },
+        retry:0,
+        nextRetry:Date.now()
         });
 
-        task.syncStatus = 'synced';
-        await addTask(task);
-      }
 
       moveTaskBetweenLists(task);
       await updateLocalCount();

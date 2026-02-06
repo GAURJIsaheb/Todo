@@ -6,6 +6,13 @@ import { safeAsync } from '../TryCatch/safeAsync.js';
 
 const API_BASE = 'http://localhost:3000';
 
+function authHeader(){
+  const token = localStorage.getItem("token");
+  return {
+    Authorization: "Bearer " + token
+  };
+}
+
 //  LOCAL COUNT 
 export const updateLocalCount = safeAsync(async () => {
   if (!appState.currentUser) return;
@@ -24,7 +31,14 @@ export const updateLocalCount = safeAsync(async () => {
 
 
 export const updateGlobalCount = safeAsync(async () => {
-  const res = await fetch(`${API_BASE}/global-completed`);//page load --> not event driven
+  const res = await fetch(`${API_BASE}/global-completed`,{
+    headers: authHeader()
+  });//page load --> not event driven
+    if(res.status === 401){
+  localStorage.removeItem("token");
+  location.href="/pages/login.html";
+  }
+
 
   if (!res.ok) {
     throw new Error(`Global count failed: ${res.status}`);

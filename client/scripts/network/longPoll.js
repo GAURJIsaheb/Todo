@@ -5,12 +5,17 @@ Hr long poll req 30 second tk alive rhagea if rwesponse else 30 sec baad 204..
 
 import { safeAsync } from '../TryCatch/safeAsync.js';
 
+
 //lonPolled will be the DOM element ,,for ui update
 export function initLongPoll({ API_BASE, longPollLed }) {
   let retries = 0;
   const MAX_RETRIES = 2;
   let stopped = false;
   let hasEverConnected = false;
+  
+   const getAuthHeader = () => ({
+    Authorization: "Bearer " + localStorage.getItem("token")
+  });
 
   longPollLed.textContent = '🟡 Connecting…'; // 👈 initial
 
@@ -22,8 +27,17 @@ export function initLongPoll({ API_BASE, longPollLed }) {
       setTimeout(() => controller.abort(), 30000);
 
       const res = await fetch(`${API_BASE}/long-poll`, {
-        signal: controller.signal
+        signal: controller.signal,
+        headers: getAuthHeader()
       });
+      
+      //  token expired case
+      if (res.status === 401) {
+        longPollLed.textContent = '🔴 Auth expired';
+        localStorage.removeItem("token");
+        setTimeout(()=>location.href="/pages/login.html",1000);
+        return;
+      }
 
       if (!res.ok && res.status !== 204) {
         throw new Error();

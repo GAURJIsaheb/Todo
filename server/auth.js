@@ -1,38 +1,43 @@
-import express from 'express';
+import express from "express";
+import { signToken, verifyToken } from "./jwt.js";
 
 const router = express.Router();
-
-// in-memory users (email → user)
 const users = new Map();
 
+
+
 /* LOGIN */
-router.post('/login', (req, res) => {
+router.post("/login",(req,res)=>{
   const { name, email } = req.body;
 
-  if (!email || !name) {
-    return res.status(400).json({ error: 'Name and email required' });
+  if(!email || !name){
+    return res.status(400).json({error:"Name & email required"});
   }
 
-  const existingUser = users.get(email);
+  const existing = users.get(email);
 
-  // same email, different name = reject
-  if (existingUser && existingUser.name !== name) {
-    return res.status(401).json({
-      error: 'Invalid details'
-    });
+  if(existing && existing.name !== name){
+    return res.status(401).json({error:"Invalid details"});
   }
 
-  // first-time user
-  if (!existingUser) {
-    users.set(email, { email, name });
+  if(!existing){
+    users.set(email,{email,name});
   }
 
-  req.session.user = { email, name };
+  const token = signToken({email,name});
 
-  res.json({ ok: true });
+  res.json({
+    token,
+    user:{email,name}
+  });
 });
 
-/* LOGOUT */
+
+
+
+
+
+/* LOGOUT dummy */
 router.post('/logout', (req, res) => {
   req.session.destroy(() => {
     res.clearCookie('todo.sid');
@@ -40,9 +45,20 @@ router.post('/logout', (req, res) => {
   });
 });
 
+
+
 /* ME */
-router.get('/me', (req, res) => {
-  res.json({ user: req.session.user || null });
+router.get("/me",(req,res)=>{
+ const header = req.headers.authorization;
+ if(!header) return res.json({user:null});
+
+ try{
+  const token = header.split(" ")[1];
+  const decoded = verifyToken(token);
+  res.json({user:decoded});
+ }catch{
+  res.json({user:null});
+ }
 });
 
 export default router;

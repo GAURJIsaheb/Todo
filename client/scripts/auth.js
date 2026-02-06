@@ -2,10 +2,10 @@
 
 //login
 export async function login(name, email) {
+  const token = localStorage.getItem('token');
   const res = await fetch(`/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
     body: JSON.stringify({ name, email })
   });
 
@@ -14,9 +14,12 @@ export async function login(name, email) {
       throw new Error(err.error || 'Login failed');
     }
 
-  const user = await res.json(); // server should return user
-  localStorage.setItem('user', JSON.stringify(user));
-  return user;
+  const data = await res.json();
+   //  store JWT + user
+  localStorage.setItem('token', data.token);
+  localStorage.setItem('user', JSON.stringify(data.user));
+
+  return data.user;
 
 }
 
@@ -26,24 +29,41 @@ export async function logout() {
   try {
     await fetch('/auth/logout', {
       method: 'POST',
-      credentials: 'include'
     });
   } catch (e) {
     console.warn('Logout request failed, clearing local session');
   }
 
   // client-side cleanup
+  localStorage.removeItem('token');
   localStorage.removeItem('user');
 }
 
 
 
+// GET CURRENT USER (token verify)
 export async function getMe() {
+
+  const token = localStorage.getItem('token');
+  if (!token) return null;
+
   const res = await fetch(`/auth/me`, {
-    credentials: 'include'
+    headers: {
+      Authorization: 'Bearer ' + token
+    }
   });
-  if (!res.ok) {
-    throw new Error('Not authenticated');
-  }
-  return res.json();
+
+  const data = await res.json();
+  return data.user || null;
+}
+
+
+//  helper for protected API calls
+export function authHeaders() {
+  const token = localStorage.getItem('token');
+
+  return {
+    'Content-Type': 'application/json',
+    Authorization: 'Bearer ' + token
+  };
 }
