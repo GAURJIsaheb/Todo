@@ -8,7 +8,7 @@ import {
   saveEditBtn,
   editModal,
   clipBtn
-} from '../domElements.js';
+} from '../dom/domElements.js';
 
 import {fileToBase64} from '../utils/image.js'
 import { safeAsync } from '../TryCatch/safeAsync.js';
@@ -17,18 +17,12 @@ import { safeSync } from '../TryCatch/safeSync.js';
 import { addTask, getTaskById ,addToQueue ,upsertQueue} from '../storage/initDb.js';
 import { appState } from '../state/appState.js';
 import { updateTaskInDOM , renderSingleTask } from '../RenderUi/render.js';
+import {authHeaders} from "../auth.js";////  JWT header helper 
 
 
 const API_BASE = "http://localhost:3000";
 
-//  JWT header helper
-function authHeaders() {
-  const token = localStorage.getItem("token");
-  return {
-    "Content-Type": "application/json",
-    Authorization: "Bearer " + token
-  };
-}
+
 
 export function initFormEvents() {
 
@@ -64,6 +58,8 @@ export function initFormEvents() {
 
         userEmail: appState.currentUser.email,
         userName: appState.currentUser.name,
+        workspaceType: appState.workspace,
+        
         originalOwner: appState.currentUser.name,
 
         syncStatus: isOnline ? 'synced' : 'pending'
@@ -79,11 +75,13 @@ export function initFormEvents() {
         action:"create",
         taskId:task.id,
         userEmail:task.userEmail,
+        workspaceType: task.workspaceType, 
         payload:{
           text:task.text,
           image:task.image,
           createdAt:task.createdAt,
-          originalOwner:task.originalOwner
+          originalOwner:task.originalOwner,
+
         },
         retry:0,
         nextRetry:Date.now()
@@ -109,7 +107,8 @@ export function initFormEvents() {
               text: task.text,
               image: task.image,         
               createdAt: task.createdAt,
-              originalOwner: task.originalOwner
+              originalOwner: task.originalOwner,
+              workspaceType: task.workspaceType
               
             })
           });
@@ -152,7 +151,7 @@ export function initFormEvents() {
         userEmail:appState.currentUser.email,
         payload:{
           text:task.text,
-          image:task.image   // image edit support
+          ...(task.imageChanged ? { image:task.image } : {})  // image edit support
         },
         retry:0,
         nextRetry:Date.now()

@@ -34,8 +34,9 @@ export function createServer() {
     credentials: true
   }));
 
-  app.use(express.json());//for http json parsin
 
+  app.use(express.json({ limit: "10mb" }));
+  app.use(express.urlencoded({ extended: true, limit: "10mb" }));
   app.use(
     session({
       name: 'todo.sid',
@@ -57,9 +58,6 @@ export function createServer() {
   app.use('/pages', express.static(path.join(clientPath, 'pages')));
   app.use(express.static(clientPath));
 
-  // protected APIs
-  app.use('/tasks', requireAuth);
-  app.use('/share', requireAuth);
 
   return { app, server, io, clientPath };
 }

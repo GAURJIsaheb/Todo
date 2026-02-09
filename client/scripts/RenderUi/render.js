@@ -2,19 +2,11 @@
 import {
   taskList,
   completedTaskList
-} from '../domElements.js';
+} from '../dom/domElements.js';
 
 import { appState } from '../state/appState.js';
 import { updateLocalCount } from '../network/counts.js';
 /*Nothing in try-catch bcz if UI crashes than it should be visible for the user */
-
-
-
-function revokeImages(container) {
-  container.querySelectorAll('img').forEach(img => {
-    if (img.src && img.src.startsWith('blob:')) URL.revokeObjectURL(img.src);
-  });
-}
 
 
 

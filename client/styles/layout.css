@@ -72,6 +72,18 @@
   border-radius: 1rem;
 }
 
+#workspace-toggle{
+  position: absolute;
+  right: 180px;
+  top: 6vh;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: var(--card-bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+
 /* Responsive Design */
 @media (max-width: 768px) {
   body {
@@ -122,6 +134,13 @@
     height: 3rem;
     font-size: 1.25rem;
   }
+  #workspace-toggle {
+    top: 1rem;
+    right: 1rem;
+    width: 7rem;
+    height: 2.5rem;
+    font-size: 0.75rem;
+  }
 
   .modal-content {
     width: 95%;
@@ -155,3 +174,4 @@
     font-size: 1.5rem;
   }
 }
+

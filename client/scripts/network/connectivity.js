@@ -6,7 +6,7 @@ import {
   sseLed,
   longPollLed,
   shortPollLed
-} from '../domElements.js';
+} from '../dom/domElements.js';
 
 import {
   addTask,
@@ -59,7 +59,7 @@ export function setChannelState(el, state, label) {
 
 
 
-export function initConnectivity({ currentUser, onRender }) {
+export function initConnectivity({ onRender }) {
 
    window.addEventListener('offline', () => {
       console.warn('🌐 Browser offline');
@@ -128,7 +128,7 @@ export function initConnectivity({ currentUser, onRender }) {
 
     // 2.) SERVER Truth/Data upholding
     const res = await fetch(
-      `${API_BASE}/tasks?userEmail=${appState.currentUser.email}`,{
+      `${API_BASE}/tasks?userEmail=${appState.currentUser.email}&workspaceType=${appState.workspace}`,{
       headers: {
        Authorization: 'Bearer ' + getToken()
     }}
@@ -154,7 +154,7 @@ export function initConnectivity({ currentUser, onRender }) {
 
     //3.)Now Locally-->offline task hua agr kuch vo sync
   //(local → server)--->sync-->Pending tasks
-    const localTasks = await getAllTasks(appState.currentUser.email);//from index db
+    const localTasks = await getAllTasks(appState.currentUser.email,appState.workspace);//from index db
 
     //  ONLY OFFLINE / UNSYNCED TASKS
     const pendingTasks = localTasks.filter(
@@ -261,26 +261,44 @@ export function initConnectivity({ currentUser, onRender }) {
 
 
   //share
-  socket.on('taskShared',  safeAsync(async (payload) => {
+socket.on('taskShared', safeAsync(async (payload) => {
+
+  console.log("SHARE PAYLOAD:", payload);
+
   const newTask = {
-    id: payload.id,
+    id: payload.id || payload.taskId,   // IDB primary key
+    taskId: payload.taskId || payload.id,
+
     text: payload.text,
-    completed: false,
-    archived: false,
-    image: null,
-    createdAt: payload.createdAt,
+    image: payload.image || null,
+
+    completed: payload.completed ?? false,
+    archived: payload.archived ?? false,
+    deleted:false,
+
+    createdAt: payload.createdAt || Date.now(),
+    updatedAt: payload.updatedAt || Date.now(),
     receivedAt: Date.now(),
-    user: appState.currentUser.name,
+
+    userEmail: payload.userEmail || appState.currentUser.email,
+    workspaceType: payload.workspaceType || "personal",
+
     originalOwner: payload.originalOwner,
     sharedFromTaskId: payload.sharedFromTaskId,
+
+    version: payload.version || 1,
     syncStatus: 'synced'
   };
 
-  await addTask(newTask);
-  onRender(); // renderTasks call
+  await addTask(newTask);//store on indexDb
+
+  console.log("TASK SAVED TO IDB:", newTask);
+
+  onRender();
 
   alert(`📥 Task received from ${payload.originalOwner}`);
 }));
+
 
   
 

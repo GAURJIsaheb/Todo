@@ -3,7 +3,7 @@ import {
   archiveBtn,
   restoreBtn,
   workerProgress
-} from '../domElements.js';
+} from '../dom/domElements.js';
 
 //global try-catch for async eventlistners functions
 import { safeAsync } from '../TryCatch/safeAsync.js';
@@ -20,7 +20,7 @@ export function initArchiveEvents() {
     currentUser: appState.currentUser,
     workerProgress,
     onRender: async () => {
-      const tasks = await getAllTasks(appState.currentUser.email);
+      const tasks = await getAllTasks(appState.currentUser.email,appState.workspace);
       await renderTasks(tasks);
     }
 
@@ -28,7 +28,7 @@ export function initArchiveEvents() {
 
 
   archiveBtn.addEventListener('click', safeAsync(async () => {
-    const tasks = await getAllTasks(appState.currentUser.email);
+    const tasks = await getAllTasks(appState.currentUser.email,appState.workspace);
     const completed = tasks.filter(
       t => t.completed && t.selectedForArchive && !t.archived
     );
@@ -39,7 +39,7 @@ export function initArchiveEvents() {
 );
 
   restoreBtn.addEventListener('click', safeAsync(async () => {
-    const tasks = await getAllTasks(appState.currentUser.email);
+    const tasks = await getAllTasks(appState.currentUser.email,appState.workspace);
     const archived = tasks.filter(t => t.archived && t.encrypted);
 
     if (!archived.length) return alert('Nothing to restore');

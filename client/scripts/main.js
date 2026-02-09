@@ -11,14 +11,10 @@ import { initArchiveEvents } from './events/archiveEvents.js';
 
 //stress test import
 import { initStressTest } from './stress/stressTest.js';
-import { taskList} from './domElements.js';
+import { taskList ,  todoContainer , logoutBtn} from "./dom/domElements.js";
 
 import { safeAsync } from './TryCatch/safeAsync.js';
 
-import {
-  todoContainer,
-  logoutBtn
-} from './domElements.js';
 
 import { initConnectivity } from './network/connectivity.js';
 import { updateGlobalCount } from './network/counts.js';
@@ -26,6 +22,12 @@ import { getMe ,logout } from './auth.js';
 
 //sync queue
 import {runSyncQueue} from './syncEngine/syncEngine.js'
+
+//worksspace
+import { initWorkspaceToggle } from './events/workspaceEvents.js';
+
+
+
 
 
 const LOGIN_PAGE = './pages/login.html';
@@ -116,14 +118,21 @@ const loadDashboard = safeAsync(async () => {
 
 
   todoContainer.style.display = 'block';
+  initWorkspaceToggle();
 
   initConnectivity({
     currentUser: appState.currentUser,
-    onRender: async () =>
-      renderTasks(await getAllTasks(appState.currentUser.email))
+    //**************************** */
+    onRender: async () => {
+      const tasks = await getAllTasks(
+        appState.currentUser.email,
+        appState.workspace
+      );
+      renderTasks(tasks);
+    }
   });
 
-  //stress t est button
+  //stress test button
   initStressTest({
     stressBtn: document.getElementById('stress-btn'),
     taskList,
@@ -137,8 +146,10 @@ const loadDashboard = safeAsync(async () => {
   initFilterEvents();
   initArchiveEvents();
 
-  const tasks = await getAllTasks(appState.currentUser.email);
+  const tasks = await getAllTasks(appState.currentUser.email,appState.workspace);
   renderTasks(tasks);
+  //console.log("ACTIVE WORKSPACE:", appState.workspace);
+
 
   await updateGlobalCount();
 

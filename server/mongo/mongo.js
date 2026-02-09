@@ -1,3 +1,4 @@
+//only mongoDb connection
 import express from "express";
 import { MongoClient, ServerApiVersion } from "mongodb";
 import dns from "dns";

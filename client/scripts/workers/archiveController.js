@@ -1,5 +1,6 @@
 import { addTask, getAllTasks, deleteTaskFromIDB } from '../storage/initDb.js';
 import { safeAsync } from '../TryCatch/safeAsync.js';
+import {appState } from '../state/appState.js'
 
 export function initArchiveWorker({
   currentUser,
@@ -23,7 +24,7 @@ worker.onmessage = safeAsync(async (e) => {
 
     if (!e.data.done) return;
 
-    const allTasks = await getAllTasks(currentUser.email);
+    const allTasks = await getAllTasks(currentUser.email,appState.workspace);
 
     // ARCHIVE FLOW
     if (workerMode === 'archive') {

@@ -17,7 +17,7 @@ function authHeader(){
 export const updateLocalCount = safeAsync(async () => {
   if (!appState.currentUser) return;
 
-  const tasks = await getAllTasks(appState.currentUser.email);
+  const tasks = await getAllTasks(appState.currentUser.email,appState.workspace);
   const completedCount = tasks.filter(
     t => t.completed && !t.archived
   ).length;
@@ -31,7 +31,7 @@ export const updateLocalCount = safeAsync(async () => {
 
 
 export const updateGlobalCount = safeAsync(async () => {
-  const res = await fetch(`${API_BASE}/global-completed`,{
+  const res = await fetch(`${API_BASE}/global-completed?userEmail=${appState.currentUser.email}&workspaceType=${appState.workspace}`,{
     headers: authHeader()
   });//page load --> not event driven
     if(res.status === 401){
