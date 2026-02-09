@@ -2,7 +2,7 @@
 import {
   sortSelect,
   searchInput
-} from '../domElements.js';
+} from '../dom/domElements.js';
 
 //global try-catch for async eventlistners functions
 import { safeAsync } from '../TryCatch/safeAsync.js';
@@ -16,7 +16,7 @@ export function initFilterEvents() {
   searchInput.addEventListener('input',safeAsync(async (e) => {
      // console.log('search '+e.target);// [object HTMLInputElement]
       appState.searchQuery = e.target.value.trim().toLowerCase();
-      renderTasks(await getAllTasks(appState.currentUser.email));
+      renderTasks(await getAllTasks(appState.currentUser.email,appState.workspace));
     })
   );
 
@@ -27,7 +27,7 @@ export function initFilterEvents() {
       //console.log('sort '+e.target);//[object HTMLSelectElement]
       appState.sortOrder = e.target.value;
       localStorage.setItem('task-sort', appState.sortOrder);
-      renderTasks(await getAllTasks(appState.currentUser.email));
+      renderTasks(await getAllTasks(appState.currentUser.email,appState.workspace));
     })
   );
 }

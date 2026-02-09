@@ -3,10 +3,10 @@ import path from 'path';
 
 import { createServer } from './setup.js';
 import { asyncHandler } from './TryCatch/async.js';
-
+import { requireAuth } from './middlewares/requireAuth.js';
+import { connectDB, db } from './mongo/mongo.js';
 
 const { app, server, io, clientPath } = createServer();
-import { connectDB, db } from './mongo/mongo.js';
  
 
 const users = new Map(); // userEmail → socket.id
@@ -73,53 +73,64 @@ io.on('connection', (socket) => {
 // CRUD 
 
 
-
-
-
-
-
 //create
-app.post('/tasks', asyncHandler(async (req, res) => {
+app.post('/tasks', requireAuth, asyncHandler(async (req, res) => {
 
-  const { id, text, userEmail, createdAt, originalOwner ,image} = req.body;
+  const { id, text, image, userEmail, workspaceType } = req.body;
+
   if (!id || !userEmail)
     return res.status(400).json({ error: 'missing fields' });
 
+  const workspaceId =
+    workspaceType === "professional"
+      ? "pro_" + userEmail
+      : "personal_" + userEmail;
+
   const col = db.collection("tasks");
 
-  // duplicate prevent
-  const exists = await col.findOne({ taskId:id, userEmail });
-  if (exists) {
-    return res.json({ status: 'ok', task: exists });
-  }
+  const exists = await col.findOne({ taskId:id });
+  if (exists) return res.json({ status: 'ok' });
 
   const newTask = {
     taskId: id,
+    workspaceId,
     text,
-    image: image || null, 
-    completed: false,
-    archived: false,
-    userEmail,
-    originalOwner,
-    createdAt: createdAt || Date.now(),
-    updatedAt: Date.now(),
+    image: image || null,
+    completed:false,
+    archived:false,
     deleted:false,
+    createdBy:userEmail,
+    createdAt:Date.now(),
+    updatedAt:Date.now(),
     version:1
   };
 
   await col.insertOne(newTask);
 
-  res.json({ status: 'ok', task: newTask });
+  res.json({ status: 'ok', task:newTask });
 }));
 
 
+
 //Get all tasks ---> read
-app.get('/tasks', asyncHandler(async (req, res) => {
-  const { userEmail } = req.query;
-  if (!userEmail) return res.status(400).json({ error: 'userEmail required' });
+app.get('/tasks', requireAuth,asyncHandler(async (req, res) => {
+
+  const { userEmail, workspaceType } = req.query;
+
+  if(!userEmail){
+    return res.status(400).json({error:"userEmail required"});
+  }
+
+  // workspace fetch
+  const ws = await db.collection("workspaces").findOne({
+    owner:userEmail,
+    type:workspaceType
+  });
+
+  if(!ws) return res.json([]);
 
   const tasks = await db.collection("tasks")
-    .find({ userEmail, deleted:false })
+    .find({ workspaceId:ws.workspaceId, deleted:false })
     .toArray();
 
   res.json(tasks);
@@ -127,105 +138,139 @@ app.get('/tasks', asyncHandler(async (req, res) => {
 
 
 
+
+
 //update
-app.put('/tasks/:id', asyncHandler(async (req, res) => {
+app.put('/tasks/:id',  requireAuth,asyncHandler(async (req, res) => {
 
   const taskId = req.params.id;
-  const { text, completed, archived, userEmail ,image } = req.body;
+  const { text, completed, archived, image } = req.body;
 
   const col = db.collection("tasks");
 
-  const task = await col.findOne({ taskId, userEmail });
+  const task = await col.findOne({ taskId });
   if (!task) return res.status(404).json({ error: 'Task not found' });
 
   const updated = {
     text: text ?? task.text,
-    image: image ?? task.image,  
+    image: image ?? task.image,
     completed: completed ?? task.completed,
     archived: archived ?? task.archived,
     updatedAt: Date.now(),
     version: (task.version || 1) + 1
   };
 
-  await col.updateOne(
-    { taskId, userEmail },
-    { $set: updated }
-  );
+  await col.updateOne({ taskId }, { $set: updated });
 
   res.json({ status: 'ok' });
-
 }));
+
 
 
 //delete
-app.delete('/tasks/:id', asyncHandler(async (req, res) => {
+app.delete('/tasks/:id',  requireAuth,asyncHandler(async (req, res) => {
 
   const taskId = req.params.id;
-  const { userEmail } = req.query;
 
-  if (!userEmail)
-    return res.status(400).json({ error: 'userEmail required' });
-
-  const col = db.collection("tasks");
-
-  const task = await col.findOne({ taskId, userEmail });
-  if (!task) return res.status(404).json({ error: 'Task not found' });
-
-  // soft delete
-  await col.updateOne(
-    { taskId, userEmail },
-    { $set: { deleted:true, updatedAt:Date.now() } }
+  await db.collection("tasks").updateOne(//just mark delete=true-->soft delete
+    { taskId },
+    { $set:{ deleted:true, updatedAt:Date.now() } }
   );
 
-  res.json({ status: 'ok' });
-
+  res.json({ status:'ok' });
 }));
+
 
 
 
 
 // Update task (complete or edit)---> 2 baar (update,delete)+ checkbox tick 3 baar[normal se complete mai and restore se vaapis complete mai,,complete se archive mai]
 //share
-app.post('/share', asyncHandler(async (req, res) => {
+app.post('/share', requireAuth, asyncHandler(async (req, res) => {
+  const { toEmail, taskId, createdBy, workspaceType } = req.body;
 
-  const { toEmail, taskId, fromEmail } = req.body;
-
-  if (!toEmail || !taskId || !fromEmail)
+  if (!toEmail || !taskId || !createdBy || !workspaceType)
     return res.status(400).json({ error: 'Missing fields' });
 
   const col = db.collection("tasks");
 
-  const sharedTask = await col.findOne({ taskId, userEmail: fromEmail });
+  const sharedTask = await col.findOne({
+    taskId,
+    createdBy,
+    deleted:false
+  });
+
   if (!sharedTask)
     return res.status(404).json({ error: 'Task not found' });
 
+  const workspaceId =
+    workspaceType === "professional"
+      ? "pro_" + toEmail
+      : "personal_" + toEmail;
+
   const newTask = {
     taskId: crypto.randomUUID(),
+    workspaceId,                    // ⭐ MOST IMPORTANT
+
     text: sharedTask.text,
+    image: sharedTask.image || null,
+
     completed:false,
     archived:false,
-    createdAt: sharedTask.createdAt,
-    userEmail: toEmail,
-    originalOwner: fromEmail,
-    sharedFromTaskId: taskId,
-    receivedAt: Date.now(),
-    updatedAt: Date.now(),
     deleted:false,
-    version:1
+
+    createdBy: toEmail,             // receiver becomes owner
+    originalOwner: createdBy,
+    sharedFromTaskId: taskId,
+
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    receivedAt: Date.now(),
+
+    version:1,
+    notified:false
   };
 
   await col.insertOne(newTask);
 
+  // realtime push
   const targetSocket = users.get(toEmail);
   if (targetSocket) {
     io.to(targetSocket).emit('taskShared', newTask);
   }
 
   res.json({ status: 'ok', task: newTask });
+
 }));
 
 
 
+
+// Get global completed count
+app.get('/global-completed', requireAuth, asyncHandler(async (req, res) => {
+
+  const { userEmail, workspaceType } = req.query;
+
+  if(!userEmail){
+    return res.status(400).json({error:"userEmail required"});
+  }
+
+  // direct workspaceId derive 
+  const workspaceId =
+    workspaceType === "professional"
+      ? "pro_" + userEmail
+      : "personal_" + userEmail;
+
+  const total = await db.collection("tasks").countDocuments({
+    workspaceId,
+    completed:true,
+    archived:false,
+    deleted:false
+  });
+
+  res.json({ totalCompleted: total });
+
+}));
 
 
 
@@ -279,17 +324,6 @@ app.get('/short-poll', (req, res) => {
 });
 
 
-// Get global completed count
-app.get('/global-completed', asyncHandler(async (req, res) => {
-
-  const total = await db.collection("tasks").countDocuments({
-    completed:true,
-    archived:false,
-    deleted:false
-  });
-
-  res.json({ totalCompleted: total });
-}));
 
 
 /* ROOT */

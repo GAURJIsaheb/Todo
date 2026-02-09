@@ -1,28 +1,65 @@
 import express from "express";
 import { signToken, verifyToken } from "./jwt.js";
+import {db} from './mongo/mongo.js'
 
 const router = express.Router();
-const users = new Map();
 
 
 
 /* LOGIN */
-router.post("/login",(req,res)=>{
+router.post("/login", async (req,res)=>{
   const { name, email } = req.body;
 
   if(!email || !name){
     return res.status(400).json({error:"Name & email required"});
   }
 
-  const existing = users.get(email);
+  const usersCol = db.collection("users");
 
-  if(existing && existing.name !== name){
+  let user = await usersCol.findOne({email});
+
+  if(user && user.name !== name){
     return res.status(401).json({error:"Invalid details"});
   }
 
-  if(!existing){
-    users.set(email,{email,name});
+  // new user create
+  if(!user){
+    user = {
+      email,
+      name,
+      createdAt: Date.now()
+    };
+    await usersCol.insertOne(user);
   }
+
+  /* ---------- workspace auto create ---------- */
+
+  const wsCol = db.collection("workspaces");
+
+const personal = await wsCol.findOne({owner:email,type:"personal"});
+if(!personal){
+  await wsCol.insertOne({
+    workspaceId:crypto.randomUUID(),
+    type:"personal",
+    owner:email,
+    members:[email],
+    createdAt:Date.now()
+  });
+}
+
+const pro = await wsCol.findOne({owner:email,type:"professional"});
+if(!pro){
+  await wsCol.insertOne({
+    workspaceId:crypto.randomUUID(),
+    type:"professional",
+    owner:email,
+    members:[email],
+    createdAt:Date.now()
+  });
+}
+
+
+
 
   const token = signToken({email,name});
 
@@ -31,6 +68,8 @@ router.post("/login",(req,res)=>{
     user:{email,name}
   });
 });
+
+
 
 
 

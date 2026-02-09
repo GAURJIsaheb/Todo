@@ -11,7 +11,7 @@ import {
   closeEditBtn,
   editTextInput,
   editImagePreview
-} from '../domElements.js';
+} from '../dom/domElements.js';
 
 import { appState } from '../state/appState.js';
 import { safeSync } from '../TryCatch/safeSync.js';

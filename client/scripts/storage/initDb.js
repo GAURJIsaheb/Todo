@@ -11,7 +11,7 @@ const STORE_SYNC = 'syncQueue';
 export const initDB = safeAsync(async () => {//Only 1 time DB is opened in the whole app
   return openDB(DB_NAME, DB_VERSION, {
     upgrade(db, oldVersion, newVersion, transaction) {
-      console.log(`[IDB] Upgrade ${oldVersion} → ${newVersion}`);
+      //console.log(`[IDB] Upgrade ${oldVersion} → ${newVersion}`);
 
       // ---- Version 1 (fresh install) ----
       if (oldVersion < 1) {
@@ -85,13 +85,20 @@ export const addTask = safeAsync(async (task) => {
 
 
 
-export const getAllTasks = safeAsync(async (userEmail) => {
-  if(!userEmail) return [];
+//userEmail and workspace
+export const getAllTasks = safeAsync(async (userEmail, workspaceType) => {
+  if (!userEmail) return [];
+
   const db = await initDB();
   const allTasks = await db.getAll(STORE_TASKS);
 
-  return allTasks.filter(t => t.userEmail === userEmail);
+  return allTasks.filter(t =>
+    t.userEmail === userEmail &&
+    (t.workspaceType || "personal") === workspaceType && //default==personal
+    !t.deleted   // delete!==false
+  );
 });
+
 
 
 

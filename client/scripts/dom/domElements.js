@@ -45,7 +45,8 @@ export const searchInput = document.getElementById('search-tasks');
 //logout
 export const logoutBtn = document.getElementById('logout-btn');
 
-
+//workspace
+export const selectWorkspace= document.getElementById("workspace-toggle");
 
 
 

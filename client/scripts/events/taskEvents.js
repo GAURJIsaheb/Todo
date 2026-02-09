@@ -2,10 +2,12 @@
 import {
   taskList,
   completedTaskList,
-} from '../domElements.js';
+} from '../dom/domElements.js';
 
 //global try-catch for async eventlistners functions
 import { safeAsync } from '../TryCatch/safeAsync.js';
+
+import { updateGlobalCount , updateLocalCount} from '../network/counts.js';
 
 import {
   addTask,
@@ -15,24 +17,19 @@ import {
   getTaskById
 } from '../storage/initDb.js';
 
-import { updateLocalCount } from '../network/counts.js';
+import {authHeaders} from "../auth.js";////  JWT header helper 
+
 
 import { appState } from '../state/appState.js';
-import {moveTaskBetweenLists,
-  updateTaskInDOM,
-  removeTaskFromDOM } from '../RenderUi/render.js';
+import {moveTaskBetweenLists,updateTaskInDOM,removeTaskFromDOM } from '../RenderUi/render.js';
+
+
 
 
 const API_BASE = "http://localhost:3000";
 
 
-function authHeaders(){
-  const token = localStorage.getItem("token");
-  return {
-    "Content-Type":"application/json",
-    "Authorization":"Bearer "+token
-  };
-}
+
 
 
 export function initTaskEvents() {
@@ -63,6 +60,7 @@ export function initTaskEvents() {
           action:"update",
           taskId:task.id,
           userEmail:appState.currentUser.email,
+          workspaceType: appState.workspace, 
           payload:{ completed:task.completed },
           retry:0,
           nextRetry:Date.now()
@@ -71,6 +69,8 @@ export function initTaskEvents() {
 
       moveTaskBetweenLists(task);
       await updateLocalCount();
+      await updateGlobalCount();
+
     } else {
       task.selectedForArchive = e.target.checked;
       await addTask(task);
@@ -116,13 +116,15 @@ export function initTaskEvents() {
     if (btn.classList.contains('share')) {
       const toEmail = prompt('Send task to which email?');
       if (!toEmail) return;
-
+      console.log("check", toEmail, task.id, appState);
       const res = await fetch(`${API_BASE}/share`, {
         method: 'POST',
         headers: authHeaders(),
         body: JSON.stringify({
           toEmail: toEmail.trim(),
-          taskId: task.id
+          taskId: task.id,
+          createdBy: appState.currentUser.email,
+          workspaceType: appState.workspace || "personal", 
         })
       });
 
@@ -130,6 +132,7 @@ export function initTaskEvents() {
         alert('❌ Failed to send task');
         return;
       }
+    
 
       btn.textContent = 'Sent!';
       setTimeout(() => (btn.textContent = 'Send'), 2000);
@@ -138,7 +141,7 @@ export function initTaskEvents() {
       alert(
       appState.socket?.connected
         ? `📤 Sent to ${toEmail}`
-        : `📤 Sent to ${toEmail} (will appear when they come online)`
+        : `📤 Sent to ${toEmail} `//when offline
     );
 
 
@@ -165,10 +168,15 @@ export function initTaskEvents() {
           action:"delete",
           taskId:task.id,
           userEmail:appState.currentUser.email,
+          workspaceType: appState.workspace, 
           payload:null,
           retry:0,
           nextRetry:Date.now()
         });
+
+      await updateLocalCount();
+      await updateGlobalCount();
+
 
     }
 
@@ -203,6 +211,7 @@ export function initTaskEvents() {
         taskId:task.id,
         userEmail:appState.currentUser.email,
         payload:{ completed:false },
+        workspaceType: appState.workspace, 
         retry:0,
         nextRetry:Date.now()
         });
@@ -210,6 +219,7 @@ export function initTaskEvents() {
 
       moveTaskBetweenLists(task);
       await updateLocalCount();
+      await updateGlobalCount();
 
 }));
 

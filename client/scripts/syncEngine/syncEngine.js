@@ -1,4 +1,5 @@
 import { getQueue, removeFromQueue, updateQueue ,getTaskById, addTask, initDB} from "../storage/initDb.js";
+import {updateGlobalCount } from "../network/counts.js"
 
 const API_BASE="http://localhost:3000";
 let syncing = false;
@@ -42,7 +43,9 @@ export async function runSyncQueue(){
           Authorization:"Bearer "+localStorage.getItem("token")
          },
          body:JSON.stringify({
+          id:job.taskId,
           userEmail:job.userEmail,
+          workspaceType:job.workspaceType,
           ...job.payload
          })
        });
@@ -61,6 +64,7 @@ export async function runSyncQueue(){
           body:JSON.stringify({
             id:job.taskId,
             userEmail:job.userEmail,
+            workspaceType:job.workspaceType,
             ...job.payload
           })
         });
@@ -105,6 +109,7 @@ export async function runSyncQueue(){
      }
 
      console.log("Synced:",job.action,job.taskId);
+     updateGlobalCount();
 
    }catch(err){
 
