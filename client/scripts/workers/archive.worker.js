@@ -51,6 +51,9 @@ async function encrypt(data) {
 }
 
 async function decrypt(record) {
+  if (!record || !record.iv || !record.payload) {
+    return record;
+  }
   const key = await getKey();
 
   const decrypted = await crypto.subtle.decrypt(
