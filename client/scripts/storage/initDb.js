@@ -6,6 +6,7 @@ const DB_NAME = 'MyTodoApp';
 const DB_VERSION = 4;
 const STORE_TASKS = 'tasks';
 const STORE_USER = 'user';
+//no global store for Worskapce--> it is not a specific different identity
 const STORE_SYNC = 'syncQueue';
 
 export const initDB = safeAsync(async () => {//Only 1 time DB is opened in the whole app
@@ -65,15 +66,22 @@ export const initDB = safeAsync(async () => {//Only 1 time DB is opened in the w
 
 
 export const addTask = safeAsync(async (task) => {
-  if(!task?.id) return;
-  const db = await initDB();//it is just a js level handler,,not Disk level
+  if (!task?.id) return;
+
+  const db = await initDB();
   const existing = await db.get(STORE_TASKS, task.id);
 
   const mergedTask = {
     ...existing,
     ...task,
 
-    //  Preserve client-only fields
+    // workspace default safety
+    workspaceType:
+      task.workspaceType ??
+      existing?.workspaceType ??
+      "personal",
+
+    // preserve image
     image:
       task.image !== undefined
         ? task.image
@@ -82,6 +90,7 @@ export const addTask = safeAsync(async (task) => {
 
   return db.put(STORE_TASKS, mergedTask);
 });
+
 
 
 
@@ -94,8 +103,8 @@ export const getAllTasks = safeAsync(async (userEmail, workspaceType) => {
 
   return allTasks.filter(t =>
     t.userEmail === userEmail &&
-    (t.workspaceType || "personal") === workspaceType && //default==personal
-    !t.deleted   // delete!==false
+    (t.workspaceType || "personal") === workspaceType &&
+    !t.deleted
   );
 });
 

@@ -192,7 +192,7 @@ app.post('/share', requireAuth, asyncHandler(async (req, res) => {
   if (!toEmail || !taskId || !createdBy || !workspaceType)
     return res.status(400).json({ error: 'Missing fields' });
 
-  const col = db.collection("tasks");
+  const col = db.collection("tasks");//return pointer of tasks collection--> so that we can query the db
 
   const sharedTask = await col.findOne({
     taskId,
@@ -210,7 +210,7 @@ app.post('/share', requireAuth, asyncHandler(async (req, res) => {
 
   const newTask = {
     taskId: crypto.randomUUID(),
-    workspaceId,                    // ⭐ MOST IMPORTANT
+    workspaceId,                   
 
     text: sharedTask.text,
     image: sharedTask.image || null,

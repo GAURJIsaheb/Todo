@@ -1,22 +1,28 @@
-import { addTask, getAllTasks, deleteTaskFromIDB } from '../storage/initDb.js';
+import {
+  addTask,
+  upsertQueue
+} from '../storage/initDb.js';
+
 import { safeAsync } from '../TryCatch/safeAsync.js';
-import {appState } from '../state/appState.js'
+import { appState } from '../state/appState.js';
 
 export function initArchiveWorker({
   currentUser,
   workerProgress,
   onRender
 }) {
+
   const worker = new Worker(
     new URL('./archive.worker.js', import.meta.url),
     { type: 'module' }
   );
 
   let workerMode = null;
-  const imageCache = new Map();
+  let currentTasks = [];
 
-worker.onmessage = safeAsync(async (e) => {
-    // progress update
+  worker.onmessage = safeAsync(async (e) => {
+
+    // progress bar
     if (e.data.progress !== undefined) {
       workerProgress.value = e.data.progress;
       return;
@@ -24,71 +30,94 @@ worker.onmessage = safeAsync(async (e) => {
 
     if (!e.data.done) return;
 
-    const allTasks = await getAllTasks(currentUser.email,appState.workspace);
+    const result = e.data.result; // encrypted/decrypted data
 
-    // ARCHIVE FLOW
-    if (workerMode === 'archive') {
-      const completed = allTasks.filter(
-        t => t.completed && t.selectedForArchive && !t.archived
-      );
+    /* ================= ARCHIVE ================= */
+    if (workerMode === "archive") {
 
-      for (let i = 0; i < completed.length; i++) {
-        completed[i].selectedForArchive = false;
+      for (let i = 0; i < result.length; i++) {
 
-        if (completed[i].image) {
-          imageCache.set(completed[i].id, completed[i].image);
-        }
+        const encrypted = result[i];
+        const original = currentTasks[i];
 
-
-        await deleteTaskFromIDB(completed[i].id);
-
-        await addTask({
-          id: completed[i].id,             
+        const updatedTask = {
+          ...original,
           archived: true,
-          encrypted: true,                 
-          encryptedPayload: e.data.result[i],
-          completed: true,
-          userEmail: currentUser.email,
-          userName: currentUser.name
+          encrypted: true,
+          iv: encrypted.iv,
+          payload: encrypted.payload,
+          text: null,
+          image: null,
+          syncStatus: "pending",
+          updatedAt: Date.now()
+        };
+
+        await addTask(updatedTask);
+
+        await upsertQueue({
+          id: crypto.randomUUID(),
+          action: "update",
+          taskId: updatedTask.id,
+          userEmail: updatedTask.userEmail,
+          workspaceType: updatedTask.workspaceType,
+          payload: { completed:true,archived: true },
+          retry: 0,
+          nextRetry: Date.now()
         });
       }
+
+      onRender();
     }
 
-    // RESTORE FLOW
-    if (workerMode === 'restore') {
-      const archived = allTasks.filter(t => t.archived && t.encrypted);
+    /* ================= RESTORE ================= */
+    if (workerMode === "restore") {
 
-      for (let i = 0; i < archived.length; i++) {
-        await deleteTaskFromIDB(archived[i].id);
+      for (let i = 0; i < result.length; i++) {
 
-        const plain = e.data.result[i];//get decrpt data as worker has used key for encrption
-        const restoredImage = imageCache.get(plain.id) ?? null;
+        const decrypted = result[i];
+        const original = currentTasks[i];
 
-        await addTask({
-            ...plain,
-            archived: false,
-            encrypted: false,
-            encryptedPayload: null,
-            completed: true,
-            userEmail: currentUser.email,
-            userName: currentUser.name,
-            syncStatus: 'pending',
-          image: restoredImage
+        const updatedTask = {
+          ...original,
+          ...decrypted,
+          archived: false,
+          encrypted: false,
+          iv: null,
+          payload: null,
+          syncStatus: "pending",
+          updatedAt: Date.now()
+        };
+
+        await addTask(updatedTask);
+
+        await upsertQueue({
+          id: crypto.randomUUID(),
+          action: "update",
+          taskId: updatedTask.id,
+          userEmail: updatedTask.userEmail,
+          workspaceType: updatedTask.workspaceType,
+          payload: { completed:true,archived: false },
+          retry: 0,
+          nextRetry: Date.now()
         });
-
-        imageCache.delete(plain.id);
       }
+
+      onRender();
     }
 
     workerProgress.style.display = 'none';
     workerMode = null;
-    onRender();//from main.js 
+    currentTasks = [];
   });
 
-  //  PUBLIC API (for main.js)
+  /* ================= PUBLIC API ================= */
+
   return {
+
     archive(tasks) {
       workerMode = 'archive';
+      currentTasks = tasks;
+
       workerProgress.style.display = 'block';
       workerProgress.value = 0;
 
@@ -97,21 +126,27 @@ worker.onmessage = safeAsync(async (e) => {
         tasks: tasks.map(t => ({
           id: t.id,
           text: t.text,
+          image: t.image ?? null,
           createdAt: t.createdAt,
-          user: t.user,
-          syncStatus: t.syncStatus ?? 'pending'
+          completed: t.completed,
+          userEmail: t.userEmail
         }))
       });
     },
 
     restore(tasks) {
       workerMode = 'restore';
+      currentTasks = tasks;
+
       workerProgress.style.display = 'block';
       workerProgress.value = 0;
 
       worker.postMessage({
         type: 'decrypt',
-        tasks: tasks.map(t => t.encryptedPayload)
+        tasks: tasks.map(t => ({
+          iv: t.iv,
+          payload: t.payload
+        }))
       });
     }
   };
